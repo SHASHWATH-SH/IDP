@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPG Supply Chain Digital Twin Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%); margin: 0; }
+        .container { max-width: 1350px; margin: 36px auto; background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(102,126,234,0.13); padding: 38px 36px 32px 36px; }
+        .header {
+            display: flex; align-items: center; justify-content: center; flex-direction: column; margin-bottom: 18px;
+        }
+        .header-icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border-radius: 50%; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(102,126,234,0.13);
+        }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 4px; font-size: 2.3rem; letter-spacing: 1px; }
+        .subtitle { color: #667eea; text-align: center; font-size: 1.1rem; margin-bottom: 18px; }
+        h2 { color: #764ba2; margin-top: 32px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+        .form-group { display: flex; flex-direction: column; position: relative; }
+        .form-group label { font-weight: 600; margin-bottom: 6px; color: #34495e; }
+        .form-group input, .form-group select { padding: 10px; border: 1.5px solid #e0e6ed; border-radius: 7px; font-size: 1rem; transition: border 0.2s, box-shadow 0.2s; background: #f7f9fc; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #764ba2; box-shadow: 0 0 0 2px #e0e7ff; }
+        .form-group input:hover, .form-group select:hover { border-color: #667eea; }
+        .form-group .fa-circle-info { position: absolute; right: 10px; top: 36px; color: #667eea; cursor: pointer; font-size: 1.1em; }
+        .form-group .tooltip { display: none; position: absolute; right: 0; top: 60px; background: #fff; color: #333; border: 1px solid #e0e6ed; border-radius: 7px; padding: 8px 12px; font-size: 0.95em; box-shadow: 0 2px 8px rgba(102,126,234,0.07); z-index: 10; width: 220px; }
+        .form-group .fa-circle-info:hover + .tooltip { display: block; }
+        .predict-btn { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; padding: 15px 0; border-radius: 10px; font-size: 1.13rem; font-weight: 600; cursor: pointer; margin-top: 20px; box-shadow: 0 2px 8px rgba(102,126,234,0.07); transition: background 0.2s, box-shadow 0.2s; }
+        .predict-btn:hover:not(:disabled) { background: linear-gradient(90deg, #764ba2 0%, #667eea 100%); box-shadow: 0 4px 16px rgba(102,126,234,0.13); }
+        .predict-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spinner { display: none; margin: 0 auto 18px auto; border: 5px solid #e0e6ed; border-top: 5px solid #667eea; border-radius: 50%; width: 38px; height: 38px; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .results-section { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 28px; }
+        .plan-card { flex: 1 1 370px; background: linear-gradient(120deg, #f8f9fa 60%, #e0e7ff 100%); border-radius: 14px; padding: 24px; box-shadow: 0 2px 12px rgba(102,126,234,0.09); min-width: 320px; border: 1.5px solid #e0e6ed; }
+        .plan-card h3 { color: #2c3e50; margin-bottom: 12px; font-size: 1.15rem; }
+        .plan-section { margin-bottom: 10px; }
+        .plan-section strong { color: #667eea; }
+        .optimizations { background: linear-gradient(90deg, #eafaf1 60%, #e0f7fa 100%); border-left: 5px solid #27ae60; border-radius: 10px; padding: 20px; margin-top: 22px; box-shadow: 0 2px 8px rgba(39,174,96,0.07); }
+        .optimizations h4 { color: #27ae60; margin-bottom: 10px; }
+        .optimizations ul { margin: 0; padding-left: 20px; }
+        .map-section { margin-top: 38px; }
+        #map { width: 100%; height: 420px; border-radius: 14px; box-shadow: 0 2px 8px rgba(102,126,234,0.07); border: 1.5px solid #e0e6ed; }
+        .info-cards { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 22px; }
+        .info-card { background: linear-gradient(120deg, #f4f6fa 60%, #e0e7ff 100%); border-radius: 10px; padding: 18px 22px; flex: 1 1 220px; min-width: 220px; box-shadow: 0 1px 6px rgba(102,126,234,0.07); border: 1.5px solid #e0e6ed; display: flex; align-items: flex-start; gap: 12px; }
+        .info-card h4 { margin: 0 0 8px 0; color: #34495e; font-size: 1rem; }
+        .info-icon { font-size: 1.5em; margin-right: 8px; color: #667eea; margin-top: 2px; }
+        .risk-high { color: #e74c3c; font-weight: bold; }
+        .risk-medium { color: #f39c12; font-weight: bold; }
+        .risk-low { color: #27ae60; font-weight: bold; }
+        .comparison-section { margin-top: 38px; }
+        .comparison-section table { width:100%; border-collapse:collapse; background: linear-gradient(120deg, #f8f9fa 60%, #e0e7ff 100%); border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(102,126,234,0.07); }
+        .comparison-section th, .comparison-section td { padding: 12px 8px; text-align: center; }
+        .comparison-section th { background: #e0e6ed; color: #34495e; }
+        .comparison-section tr:nth-child(even) { background: #f4f6fa; }
+        .comparison-section tr:nth-child(odd) { background: #f8f9fa; }
+        @media (max-width: 900px) { .container { padding: 10px; } .results-section, .info-cards { flex-direction: column; } .plan-card, .info-card { min-width: unset; } }
+    </style>
+</head>
+<body>
+    <nav style="width:100%;position:sticky;top:0;z-index:100;background:linear-gradient(90deg,#667eea 0%,#764ba2 100%);box-shadow:0 2px 8px rgba(102,126,234,0.08);padding:0 0 0 0;">
+        <div style="max-width:1350px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 36px;height:62px;">
+            <div style="font-size:1.25rem;font-weight:700;color:#fff;letter-spacing:1px;display:flex;align-items:center;gap:10px;">
+                <i class="fa-solid fa-truck-fast"></i> CPG Digital Twin
+            </div>
+            <div style="display:flex;align-items:center;gap:18px;">
+                <span style="font-weight:600;color:#fff;background:rgba(255,255,255,0.13);padding:6px 16px;border-radius:7px;">{{ current_user.username }}</span>
+                <a href="{{ url_for('profile') }}" style="color:#fff;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:7px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='none'">Profile</a>
+                <a href="{{ url_for('statistics') }}" style="color:#fff;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:7px;transition:background 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.18)'" onmouseout="this.style.background='none'">Statistics</a>
+                <a href="{{ url_for('logout') }}" style="color:#fff;font-weight:600;text-decoration:none;padding:6px 14px;border-radius:7px;transition:background 0.2s;" onmouseover="this.style.background='rgba(231,76,60,0.18)'" onmouseout="this.style.background='none'">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container" style="margin-top:32px;">
+        <div class="header">
+            <div class="header-icon"><i class="fa-solid fa-truck-fast"></i></div>
+            <h1>CPG Supply Chain Digital Twin</h1>
+            <div class="subtitle">Simulation, Disruption Prediction & Optimization Dashboard</div>
+        </div>
+        <form id="twinForm">
+            <h2>Unified Supply Chain Scenario</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Product Name <i class="fa-regular fa-circle-info" title="Name of the product to simulate."></i></label>
+                    <input type="text" name="product_name" value="Electronics" required>
+                </div>
+                <div class="form-group">
+                    <label>Category <i class="fa-regular fa-circle-info" title="Select the product category."></i></label>
+                    <select name="product_category">
+                        <option>Electronics</option><option>Food</option><option>Chemicals</option><option>Pharmaceuticals</option><option>Textiles</option><option>Automotive</option><option>Machinery</option><option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity <i class="fa-regular fa-circle-info" title="Total units to be shipped."></i></label>
+                    <input type="number" name="quantity" value="1000" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Load Weight (kg) <i class="fa-regular fa-circle-info" title="Total shipment weight in kilograms."></i></label>
+                    <input type="number" name="load_weight" value="500" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Temperature Sensitivity <i class="fa-regular fa-circle-info" title="Does the product require cold chain logistics?"></i></label>
+                    <select name="temperature_sensitive">
+                        <option value="0">No (Room Temp)</option>
+                        <option value="1">Yes (Refrigerated)</option>
+                        <option value="2">Yes (Frozen)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Manufacturing Plant <i class="fa-regular fa-circle-info" title="Origin city of the product."></i></label>
+                    <select name="manufacturing_plant">
+                        {% set mfg_list = (profile.manufacturing_plant.split(',') if profile and profile.manufacturing_plant else ['mumbai','delhi','bangalore','chennai','kolkata','hyderabad','pune','ahmedabad']) %}
+                        {% for city in mfg_list %}
+                            <option value="{{ city }}" {% if loop.index0 == 0 %}selected{% endif %}>{{ city|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Warehouse Location <i class="fa-regular fa-circle-info" title="Select the warehouse city."></i></label>
+                    <select name="warehouse_location">
+                        {% set wh_list = (profile.warehouse.split(',') if profile and profile.warehouse else ['mumbai','delhi','bangalore','chennai','kolkata','hyderabad','pune','ahmedabad']) %}
+                        {% for city in wh_list %}
+                            <option value="{{ city }}" {% if loop.index0 == 0 %}selected{% endif %}>{{ city|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Seller Address <i class="fa-regular fa-circle-info" title="Seller's city location."></i></label>
+                    <select name="seller_address">
+                        {% set seller_list = (profile.seller.split(',') if profile and profile.seller else ['mumbai','delhi','bangalore','chennai','kolkata','hyderabad','pune','ahmedabad']) %}
+                        {% for city in seller_list %}
+                            <option value="{{ city }}" {% if loop.index0 == 0 %}selected{% endif %}>{{ city|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Delivery Destination <i class="fa-regular fa-circle-info" title="Final delivery city."></i></label>
+                    <select name="delivery_destination">
+                        <option value="mumbai">Mumbai</option><option value="delhi">Delhi</option><option value="bangalore">Bangalore</option><option value="chennai">Chennai</option><option value="kolkata">Kolkata</option><option value="hyderabad">Hyderabad</option><option value="pune">Pune</option><option value="ahmedabad">Ahmedabad</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Expected Lead Time (hrs) <i class="fa-regular fa-circle-info" title="Planned delivery time in hours."></i></label>
+                    <input type="number" name="planned_lead_time" value="48" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Handling Delay (hrs) <i class="fa-regular fa-circle-info" title="Extra handling or loading delay in hours."></i></label>
+                    <input type="number" name="handling_delay" value="0" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Traffic Level <i class="fa-regular fa-circle-info" title="Expected traffic on the route."></i></label>
+                    <select name="traffic_level">
+                        <option value="1">Low</option>
+                        <option value="2" selected>Medium</option>
+                        <option value="3">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="spinner" id="loadingSpinner"></div>
+            <button class="predict-btn" type="submit">Predict & Simulate</button>
+        </form>
+        <div class="info-cards" id="infoCards" style="display:none;">
+            <div class="info-card" id="weatherCard"><span class="info-icon"><i class="fa-solid fa-cloud-sun"></i></span><div class="info-content"></div></div>
+            <div class="info-card" id="newsCard"><span class="info-icon"><i class="fa-solid fa-newspaper"></i></span><div class="info-content"></div></div>
+            <div class="info-card" id="trafficCard"><span class="info-icon"><i class="fa-solid fa-road"></i></span><div class="info-content"></div></div>
+        </div>
+        <div class="results-section" id="resultsSection" style="display:none;">
+            <div class="plan-card" id="currentPlan">
+                <h3>Current Plan (Predicted)</h3>
+                <div class="plan-section" id="currentPlanDetails"></div>
+            </div>
+            <div class="plan-card" id="optimizedPlan">
+                <h3>Optimized Recommendation</h3>
+                <div class="plan-section" id="optimizedPlanDetails"></div>
+            </div>
+        </div>
+        <div class="optimizations" id="optimizations" style="display:none;">
+            <h4>Optimization Suggestions</h4>
+            <ul id="optList"></ul>
+        </div>
+        <div class="map-section">
+            <h2>Logistics Simulation Map</h2>
+            <div id="map" style="position:relative;"></div>
+            <div id="mapOverlay" style="position:absolute;top:18px;right:18px;z-index:1000;background:rgba(255,255,255,0.95);border-radius:12px;box-shadow:0 2px 8px rgba(102,126,234,0.13);padding:14px 22px;min-width:180px;display:none;"></div>
+            <div id="mapLegend" style="margin-top:10px;display:flex;align-items:center;gap:24px;justify-content:center;">
+                <span style="display:inline-flex;align-items:center;"><span style="display:inline-block;width:24px;height:6px;background:#667eea;margin-right:6px;vertical-align:middle;border-radius:3px;"></span> <span style="color:#667eea;font-weight:600;">Current Plan</span></span>
+                <span style="display:inline-flex;align-items:center;"><span style="display:inline-block;width:24px;height:6px;border-bottom:3px dashed #27ae60;margin-right:6px;vertical-align:middle;"></span> <span style="color:#27ae60;font-weight:600;">Optimized Plan</span></span>
+                <span style="display:inline-flex;align-items:center;"><span style="display:inline-block;width:24px;height:24px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(39,174,96,0.13);display:flex;align-items:center;justify-content:center;font-size:1.2em;margin-right:6px;"><i class="fa-solid fa-truck"></i></span> <span style="color:#34495e;font-weight:600;">Vehicle Animation</span></span>
+            </div>
+            <div style="display:flex;gap:18px;justify-content:center;margin-top:18px;">
+                <button id="animateCurrentBtn" type="button" style="background:linear-gradient(90deg,#667eea 0%,#764ba2 100%);color:#fff;font-weight:600;border:none;padding:10px 22px;border-radius:8px;box-shadow:0 2px 8px rgba(102,126,234,0.13);cursor:pointer;transition:background 0.2s;font-size:1.08rem;">Animate Current Vehicle</button>
+                <button id="animateOptimizedBtn" type="button" style="background:linear-gradient(90deg,#27ae60 0%,#00b894 100%);color:#fff;font-weight:600;border:none;padding:10px 22px;border-radius:8px;box-shadow:0 2px 8px rgba(39,174,96,0.13);cursor:pointer;transition:background 0.2s;font-size:1.08rem;">Animate Optimized Vehicle</button>
+            </div>
+        </div>
+        <div class="comparison-section" id="comparisonSection" style="margin-top:32px;display:none;">
+            <h2>Plan Comparison</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Route</th>
+                        <th>Distance (km)</th>
+                        <th>Vehicle</th>
+                        <th>Expected Lead Time (hrs)</th>
+                        <th>Actual Lead Time (hrs)</th>
+                        <th>Main Risks</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        // City coordinates for map
+        const cityCoords = {
+            mumbai: [19.076, 72.8777],
+            delhi: [28.6139, 77.209],
+            bangalore: [12.9716, 77.5946],
+            chennai: [13.0827, 80.2707],
+            kolkata: [22.5726, 88.3639],
+            hyderabad: [17.385, 78.4867],
+            pune: [18.5204, 73.8567],
+            ahmedabad: [23.0225, 72.5714]
+        };
+        let map, markers = [], polylines = [], vehicleMarker = null, animating = false, lastPlan = null, lastOptPlan = null;
+        function clearMap() {
+            if(map) { map.eachLayer(l => { if(l._url === undefined) map.removeLayer(l); }); }
+            markers = [];
+            polylines = [];
+            if(vehicleMarker) { map.removeLayer(vehicleMarker); vehicleMarker = null; }
+            document.getElementById('mapOverlay').style.display = 'none';
+        }
+        function drawSimulationMap(plan, optPlan) {
+            lastPlan = plan; lastOptPlan = optPlan;
+            if(!map) map = L.map('map').setView([20.5,78.9], 5);
+            clearMap();
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB, OpenStreetMap contributors' }).addTo(map);
+            // Markers
+            const nodes = [
+                {city: plan.manufacturing_plant, color: '#2980b9', icon: '<i class="fa-solid fa-industry"></i>', label:'Plant'},
+                {city: plan.warehouse, color: '#27ae60', icon: '<i class="fa-solid fa-warehouse"></i>', label:'Warehouse'},
+                {city: plan.seller, color: '#f1c40f', icon: '<i class="fa-solid fa-store"></i>', label:'Seller'},
+                {city: plan.delivery, color: '#e74c3c', icon: '<i class="fa-solid fa-box"></i>', label:'Delivery'}
+            ];
+            nodes.forEach((n, i) => {
+                if(cityCoords[n.city]) {
+                    const marker = L.marker(cityCoords[n.city], {
+                        icon: L.divIcon({className:'',html:`<div style="background:${n.color};color:#fff;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 2px 8px rgba(44,62,80,0.13);">${n.icon}</div>`,iconSize:[40,40]})
+                    }).addTo(map).bindTooltip(`<b>${n.label}</b><br>${n.city.charAt(0).toUpperCase()+n.city.slice(1)}`,{direction:'top',offset:[0,-18]});
+                    markers.push(marker);
+                }
+            });
+            // Current route (solid)
+            const route = [plan.manufacturing_plant, plan.warehouse, plan.seller, plan.delivery].map(c=>cityCoords[c]).filter(Boolean);
+            if(route.length > 1) {
+                polylines.push(L.polyline(route, {color:'#667eea',weight:6,opacity:0.95}).addTo(map));
+                animateVehicle(route, plan.vehicle || 'Truck', '#667eea');
+            }
+            // Optimized route (dotted)
+            if(optPlan) {
+                const optRoute = [optPlan.manufacturing_plant, optPlan.warehouse, optPlan.seller, optPlan.delivery].map(c=>cityCoords[c]).filter(Boolean);
+                if(JSON.stringify(route)!==JSON.stringify(optRoute) && optRoute.length > 1) {
+                    polylines.push(L.polyline(optRoute, {color:'#27ae60',weight:5,opacity:0.85,dashArray:'10,10'}).addTo(map));
+                }
+            }
+            if(route[0]) map.setView(route[0], 6);
+        }
+        function animateVehicle(route, vehicle, color) {
+            if(vehicleMarker) { map.removeLayer(vehicleMarker); vehicleMarker = null; }
+            if(!route || route.length < 2) return;
+            let idx = 0, t = 0, steps = 200, interval = 15;
+            const vehicleIcons = {
+                'Bike': 'fa-motorcycle', 'Van': 'fa-shuttle-van', 'Mini Truck': 'fa-truck-pickup', 'Truck': 'fa-truck', 'Container': 'fa-truck-moving', 'Refrigerated Truck': 'fa-snowflake', 'Frozen Truck': 'fa-icicles', 'default': 'fa-truck'
+            };
+            const icon = vehicleIcons[vehicle] || vehicleIcons['default'];
+            function lerp(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
+            function move() {
+                if(idx >= route.length-1) { animating = false; return; }
+                t += 1/steps;
+                if(t > 1) { t = 0; idx++; }
+                if(idx < route.length-1) {
+                    const pos = lerp(route[idx], route[idx+1], t);
+                    if(vehicleMarker) vehicleMarker.setLatLng(pos);
+                    else vehicleMarker = L.marker(pos, {
+                        icon: L.divIcon({className:'',html:`<div style="background:${color};color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(39,174,96,0.13);"><i class="fa-solid ${icon}"></i></div>`,iconSize:[38,38]})
+                    }).addTo(map);
+                    if(animating) setTimeout(move, interval);
+                }
+            }
+            animating = true; move();
+        }
+        function showMapOverlay(currentPlan) {
+            const overlay = document.getElementById('mapOverlay');
+            if (!currentPlan) return;
+            
+            const vehicle = currentPlan.vehicle || 'Auto-selected';
+            const distance = currentPlan.distance ? currentPlan.distance.toFixed(2) : 'N/A';
+            const expectedLeadTime = currentPlan.expected_lead_time ? currentPlan.expected_lead_time.toFixed(2) : 'N/A';
+            const actualLeadTime = currentPlan.actual_lead_time ? currentPlan.actual_lead_time.toFixed(2) : 'N/A';
+            
+            overlay.innerHTML = `
+                <div style="font-size:0.95rem;line-height:1.6;">
+                    <div><b>Vehicle:</b> ${vehicle}</div>
+                    <div><b>Distance:</b> ${distance} km</div>
+                    <div><b>Expected Lead Time:</b> ${expectedLeadTime} hrs</div>
+                    <div><b>Actual Lead Time:</b> ${actualLeadTime} hrs</div>
+                </div>
+            `;
+            overlay.style.display = 'block';
+        }
+        function riskLabel(val) {
+            if(val > 0.7) return '<span class="risk-high">High</span>';
+            if(val > 0.4) return '<span class="risk-medium">Medium</span>';
+            return '<span class="risk-low">Low</span>';
+        }
+        document.getElementById('twinForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = Object.fromEntries(new FormData(form).entries());
+            document.querySelector('.predict-btn').disabled = true;
+            document.getElementById('loadingSpinner').style.display = 'block';
+            fetch('/api/predict/disruption', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('infoCards').style.display = '';
+                // Weather
+                let weatherHtml = '';
+                if (res.weather) {
+                    const locs = [
+                        {key: 'manufacturing_plant', label: 'Manufacturing Plant'},
+                        {key: 'warehouse', label: 'Warehouse'},
+                        {key: 'seller', label: 'Seller'},
+                        {key: 'destination', label: 'Destination'}
+                    ];
+                    weatherHtml = locs.map(loc => {
+                        const w = res.weather[loc.key];
+                        if (!w) return '';
+                        return `<div><b>${loc.label} (${w.city}):</b> Temp: ${w.temperature}°C, Humidity: ${w.humidity}%, Condition: ${w.condition}, Rain: ${w.rainfall}mm</div>`;
+                    }).join('');
+                }
+                document.querySelector('#weatherCard .info-content').innerHTML = `<h4>Weather</h4>${weatherHtml}`;
+                // News
+                let newsHtml = '';
+                if (Array.isArray(res.news) && res.news.length > 0) {
+                    newsHtml = res.news.map(n =>
+                        `<div style='margin-bottom:10px;'><b>${n.product} in ${n.city}:</b> ` +
+                        (n.url ? `<a href='${n.url}' target='_blank'>${n.headline}</a>` : n.headline) +
+                        `</div>`
+                    ).join('');
+                } else {
+                    newsHtml = 'No relevant news found.';
+                }
+                document.querySelector('#newsCard .info-content').innerHTML = `<h4>News</h4>${newsHtml}`;
+                // Traffic
+                let trafficHtml = '';
+                if (res.traffic) {
+                    const sellerCity = data.seller_address.charAt(0).toUpperCase() + data.seller_address.slice(1);
+                    const destCity = data.delivery_destination.charAt(0).toUpperCase() + data.delivery_destination.slice(1);
+                    const travelTimeMin = res.traffic.estimated_travel_time;
+                    const travelTimeHr = (travelTimeMin / 60).toFixed(2);
+                    trafficHtml = `
+                        <div><b>Status:</b> ${res.traffic.description} (${['Low','Medium','High'][res.traffic.level-1]})</div>
+                        <div><b>Estimated Travel Time:</b> ${travelTimeMin} min (${travelTimeHr} hr) <span style='font-size:0.95em;color:#888;'>(from ${sellerCity} to ${destCity})</span></div>
+                        <div><b>Average Speed:</b> ${res.traffic.average_speed} km/h</div>
+                        <div><b>Incidents:</b> ${res.traffic.incidents}</div>
+                        <div><b>Trend:</b> ${res.traffic.trend}</div>
+                    `;
+                }
+                document.querySelector('#trafficCard .info-content').innerHTML = `<h4>Traffic</h4>${trafficHtml}`;
+                // Current plan details
+                document.getElementById('resultsSection').style.display = '';
+                document.getElementById('currentPlanDetails').innerHTML = `
+                    <div><strong>Inventory Stockout:</strong> ${riskLabel(res.inventory_stockout.risk)} (${(res.inventory_stockout.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Lead Time Anomaly:</strong> ${riskLabel(res.current_plan.lead_time_anomaly.risk)} (${(res.current_plan.lead_time_anomaly.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Product Condition:</strong> ${riskLabel(res.product_condition.risk)} (${(res.product_condition.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Route Delay:</strong> ${riskLabel(res.route_delay.risk)} (${(res.route_delay.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Vehicle:</strong> ${res.current_plan.vehicle ? res.current_plan.vehicle : 'Auto-selected'}</div>
+                    <div><strong>Distance:</strong> ${(res.current_plan.distance ?? 'N/A').toFixed ? res.current_plan.distance.toFixed(2) : res.current_plan.distance} km</div>
+                    <div><strong>Expected Lead Time:</strong> ${(res.current_plan.expected_lead_time ?? 'N/A').toFixed ? res.current_plan.expected_lead_time.toFixed(2) : res.current_plan.expected_lead_time} hrs</div>
+                    <div><strong>Actual Lead Time:</strong> ${(res.current_plan.actual_lead_time ?? 'N/A').toFixed ? res.current_plan.actual_lead_time.toFixed(2) : res.current_plan.actual_lead_time} hrs</div>
+                    <div><strong>Cost:</strong> ₹${(res.current_plan.cost ?? 'N/A').toFixed ? res.current_plan.cost.toFixed(2) : res.current_plan.cost}</div>
+                `;
+                // Optimized plan details (use backend's optimized_plan directly)
+                document.getElementById('optimizedPlanDetails').innerHTML = `
+                    <div><strong>Inventory Stockout:</strong> ${riskLabel(res.inventory_stockout.risk)} (${(res.inventory_stockout.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Lead Time Anomaly:</strong> ${riskLabel(res.optimized_plan.lead_time_anomaly.risk)} (${(res.optimized_plan.lead_time_anomaly.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Product Condition:</strong> ${riskLabel(res.product_condition.risk)} (${(res.product_condition.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Route Delay:</strong> ${riskLabel(res.route_delay.risk)} (${(res.route_delay.risk*100).toFixed(2)}%)</div>
+                    <div><strong>Vehicle:</strong> ${res.optimized_plan.vehicle}</div>
+                    <div><strong>Distance:</strong> ${(res.optimized_plan.distance ?? 'N/A').toFixed ? res.optimized_plan.distance.toFixed(2) : res.optimized_plan.distance} km</div>
+                    <div><strong>Expected Lead Time:</strong> ${(res.optimized_plan.expected_lead_time ?? 'N/A').toFixed ? res.optimized_plan.expected_lead_time.toFixed(2) : res.optimized_plan.expected_lead_time} hrs</div>
+                    <div><strong>Actual Lead Time:</strong> ${(res.optimized_plan.actual_lead_time ?? 'N/A').toFixed ? res.optimized_plan.actual_lead_time.toFixed(2) : res.optimized_plan.actual_lead_time} hrs</div>
+                    <div><strong>Cost:</strong> ₹${(res.optimized_plan.cost ?? 'N/A').toFixed ? res.optimized_plan.cost.toFixed(2) : res.optimized_plan.cost}</div>
+                `;
+                // Optimizations
+                const opt = res.optimizations || [];
+                document.getElementById('optimizations').style.display = opt.length ? '' : 'none';
+                document.getElementById('optList').innerHTML = opt.map(o => `<li>${o}</li>`).join('');
+                // Map: use backend's route arrays
+                function routeToPlan(routeArr, planData) {
+                    return {
+                        manufacturing_plant: routeArr[0],
+                        warehouse: routeArr[1],
+                        seller: routeArr[2],
+                        delivery: routeArr[3],
+                        vehicle: planData.vehicle,
+                        distance: planData.distance,
+                        expected_lead_time: planData.expected_lead_time,
+                        actual_lead_time: planData.actual_lead_time
+                    };
+                }
+                drawSimulationMap(
+                    routeToPlan(res.current_plan.route, res.current_plan),
+                    routeToPlan(res.optimized_plan.route, res.optimized_plan)
+                );
+                // Show map overlay with current plan data
+                showMapOverlay(res.current_plan);
+                // Comparison Table
+                const routeStrArr = arr => arr.map(c=>c.charAt(0).toUpperCase()+c.slice(1)).join(' → ');
+                const mainRisks = r => {
+                    let arr = [];
+                    if(r.inventory_stockout.risk > 0.5) arr.push('Stockout');
+                    if(r.lead_time_anomaly.risk > 0.5) arr.push('Lead Time');
+                    if(r.product_condition.risk > 0.5) arr.push('Condition');
+                    if(r.route_delay.risk > 0.5) arr.push('Route Delay');
+                    return arr.join(', ') || 'Low';
+                };
+                document.getElementById('comparisonSection').style.display = '';
+                document.getElementById('comparisonTableBody').innerHTML = `
+                    <tr><td style='padding:8px 6px;font-weight:600;'>Current</td><td>${routeStrArr(res.current_plan.route)}</td><td>${(res.current_plan.distance ?? 'N/A').toFixed ? res.current_plan.distance.toFixed(2) : res.current_plan.distance}</td><td>${res.current_plan.vehicle}</td><td>${(res.current_plan.expected_lead_time ?? 'N/A').toFixed ? res.current_plan.expected_lead_time.toFixed(2) : res.current_plan.expected_lead_time}</td><td>${(res.current_plan.actual_lead_time ?? 'N/A').toFixed ? res.current_plan.actual_lead_time.toFixed(2) : res.current_plan.actual_lead_time}</td><td>${mainRisks({
+                        inventory_stockout: res.inventory_stockout,
+                        lead_time_anomaly: res.current_plan.lead_time_anomaly,
+                        product_condition: res.product_condition,
+                        route_delay: res.route_delay
+                    })}</td></tr>
+                    <tr><td style='padding:8px 6px;font-weight:600;'>Optimized</td><td>${routeStrArr(res.optimized_plan.route)}</td><td>${(res.optimized_plan.distance ?? 'N/A').toFixed ? res.optimized_plan.distance.toFixed(2) : res.optimized_plan.distance}</td><td>${res.optimized_plan.vehicle}</td><td>${(res.optimized_plan.expected_lead_time ?? 'N/A').toFixed ? res.optimized_plan.expected_lead_time.toFixed(2) : res.optimized_plan.expected_lead_time}</td><td>${(res.optimized_plan.actual_lead_time ?? 'N/A').toFixed ? res.optimized_plan.actual_lead_time.toFixed(2) : res.optimized_plan.actual_lead_time}</td><td>${mainRisks({
+                        inventory_stockout: res.inventory_stockout,
+                        lead_time_anomaly: res.optimized_plan.lead_time_anomaly,
+                        product_condition: res.product_condition,
+                        route_delay: res.route_delay
+                    })}</td></tr>
+                `;
+                document.querySelector('.predict-btn').disabled = false;
+            })
+            .catch(err => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                alert('Prediction failed. Check backend logs.');
+                document.querySelector('.predict-btn').disabled = false;
+            });
+        }
+        document.getElementById('animateCurrentBtn').onclick = function() {
+            if(lastPlan) {
+                const route = [lastPlan.manufacturing_plant, lastPlan.warehouse, lastPlan.seller, lastPlan.delivery].map(c=>cityCoords[c]).filter(Boolean);
+                animateVehicle(route, lastPlan.vehicle || 'Truck', '#667eea');
+            }
+        };
+        document.getElementById('animateOptimizedBtn').onclick = function() {
+            if(lastOptPlan) {
+                const route = [lastOptPlan.manufacturing_plant, lastOptPlan.warehouse, lastOptPlan.seller, lastOptPlan.delivery].map(c=>cityCoords[c]).filter(Boolean);
+                animateVehicle(route, lastOptPlan.vehicle || 'Truck', '#27ae60');
+            }
+        };
+    </script>
+</body>
+</html> 

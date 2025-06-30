@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile Setup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        body { background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
+        .top-bar { width:100%; background:linear-gradient(90deg,#667eea 0%,#764ba2 100%); box-shadow:0 2px 8px rgba(102,126,234,0.08); height:56px; display:flex; align-items:center; }
+        .top-bar-content { max-width:600px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; padding:0 18px; }
+        .back-link { color:#fff; font-weight:600; text-decoration:none; font-size:1.1rem; display:flex; align-items:center; gap:7px; transition:color 0.2s; }
+        .back-link:hover { color:#ffe082; }
+        .user-icon { color:#fff; font-size:1.5rem; background:rgba(255,255,255,0.13); border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; }
+        .user-summary { display: flex; align-items: center; gap: 18px; background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(102,126,234,0.10); padding: 22px 28px; margin: 32px auto 18px auto; max-width: 500px; }
+        .user-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg,#667eea 60%,#764ba2 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 2.2rem; font-weight: 700; }
+        .user-info { display: flex; flex-direction: column; gap: 4px; }
+        .user-info .company { font-size: 1.2rem; font-weight: 700; color: #2c3e50; }
+        .user-info .email { color: #667eea; font-size: 1.05rem; }
+        .user-info .username { color: #2c3e50; font-size: 1.05rem; }
+        .profile-container { max-width: 500px; margin: 0 auto 40px auto; background: linear-gradient(120deg, #f8f9fa 60%, #e0e7ff 100%); border-radius: 18px; box-shadow: 0 8px 32px rgba(102,126,234,0.13); padding: 38px 32px 32px 32px; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 6px; font-size: 2rem; }
+        .subtitle { color: #667eea; text-align: center; font-size: 1.08rem; margin-bottom: 22px; }
+        .form-group { margin-bottom: 22px; }
+        .form-group label { font-weight: 600; display: flex; align-items:center; gap:7px; margin-bottom: 8px; color: #34495e; font-size:1.04rem; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1.5px solid #e0e6ed; border-radius: 8px; font-size: 1rem; background: #f7f9fc; transition: border 0.2s, box-shadow 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #764ba2; box-shadow: 0 0 0 2px #e0e7ff; }
+        .form-group select[multiple] { height: 120px; }
+        .form-group input:hover, .form-group select:hover { border-color: #667eea; }
+        .form-group small { color:#888; margin-top:4px; display:block; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .chip { background: #667eea; color: #fff; border-radius: 16px; padding: 4px 12px; font-size: 0.98rem; font-weight: 500; display: inline-flex; align-items: center; }
+        .chip i { margin-right: 4px; }
+        .submit-btn { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; padding: 15px 0; border-radius: 11px; font-size: 1.15rem; font-weight: 700; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 0 2px 8px rgba(102,126,234,0.07); transition: background 0.2s, box-shadow 0.2s; letter-spacing:0.5px; }
+        .submit-btn:hover { background: linear-gradient(90deg, #764ba2 0%, #667eea 100%); box-shadow: 0 4px 16px rgba(102,126,234,0.13); }
+        @media (max-width: 600px) { .profile-container, .top-bar-content, .user-summary { max-width: 98vw; padding: 0 6px; } .profile-container { padding: 18px 4px 18px 4px; } }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-bar-content">
+            <a href="{{ url_for('index') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+            <div class="user-icon"><i class="fa-solid fa-user"></i></div>
+        </div>
+    </div>
+    {% if current_user.is_authenticated %}
+    <div class="user-summary">
+        <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+        <div class="user-info">
+            <div class="company">{{ current_user.company_name }}</div>
+            <div class="email"><i class="fa-solid fa-envelope"></i> {{ current_user.gmail }}</div>
+            <div class="username"><i class="fa-solid fa-user"></i> {{ current_user.username }}</div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="profile-container">
+        <h2>Profile Setup</h2>
+        <div class="subtitle">Please complete or update your supply chain profile details.</div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="manufacturing_plant"><i class="fa-solid fa-industry"></i> Manufacturing Plant(s)</label>
+                <select id="manufacturing_plant" name="manufacturing_plant" multiple required>
+                    {% set cities = ['mumbai','delhi','bangalore','chennai','kolkata','hyderabad','pune','ahmedabad'] %}
+                    {% set selected_mfg = (profile.manufacturing_plant.split(',') if profile and profile.manufacturing_plant else []) %}
+                    {% for city in cities %}
+                        <option value="{{ city }}" {% if city in selected_mfg %}selected{% endif %}>{{ city|capitalize }}</option>
+                    {% endfor %}
+                </select>
+                <div class="chips">
+                    {% for city in selected_mfg %}
+                        <span class="chip"><i class="fa-solid fa-industry"></i> {{ city|capitalize }}</span>
+                    {% endfor %}
+                </div>
+                <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+            </div>
+            <div class="form-group">
+                <label for="seller"><i class="fa-solid fa-store"></i> Seller(s)</label>
+                <select id="seller" name="seller" multiple required>
+                    {% set selected_seller = (profile.seller.split(',') if profile and profile.seller else []) %}
+                    {% for city in cities %}
+                        <option value="{{ city }}" {% if city in selected_seller %}selected{% endif %}>{{ city|capitalize }}</option>
+                    {% endfor %}
+                </select>
+                <div class="chips">
+                    {% for city in selected_seller %}
+                        <span class="chip"><i class="fa-solid fa-store"></i> {{ city|capitalize }}</span>
+                    {% endfor %}
+                </div>
+                <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+            </div>
+            <div class="form-group">
+                <label for="warehouse"><i class="fa-solid fa-warehouse"></i> Warehouse(s)</label>
+                <select id="warehouse" name="warehouse" multiple required>
+                    {% set selected_warehouse = (profile.warehouse.split(',') if profile and profile.warehouse else []) %}
+                    {% for city in cities %}
+                        <option value="{{ city }}" {% if city in selected_warehouse %}selected{% endif %}>{{ city|capitalize }}</option>
+                    {% endfor %}
+                </select>
+                <div class="chips">
+                    {% for city in selected_warehouse %}
+                        <span class="chip"><i class="fa-solid fa-warehouse"></i> {{ city|capitalize }}</span>
+                    {% endfor %}
+                </div>
+                <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+            </div>
+            <div class="form-group">
+                <label for="capacity"><i class="fa-solid fa-cubes"></i> Capacity</label>
+                <input type="number" id="capacity" name="capacity" required min="1" value="{{ profile.capacity if profile and profile.capacity else 1000 }}">
+            </div>
+            <div class="form-group">
+                <label for="cpg_product_type"><i class="fa-solid fa-box"></i> CPG Product Type(s)</label>
+                <select id="cpg_product_type" name="cpg_product_type" multiple required>
+                    {% set products = ['Electronics','Food','Chemicals','Pharmaceuticals','Textiles','Automotive','Machinery','Other'] %}
+                    {% set selected_products = (profile.cpg_product_type.split(',') if profile and profile.cpg_product_type else []) %}
+                    {% for prod in products %}
+                        <option value="{{ prod }}" {% if prod in selected_products %}selected{% endif %}>{{ prod }}</option>
+                    {% endfor %}
+                </select>
+                <div class="chips">
+                    {% for prod in selected_products %}
+                        <span class="chip"><i class="fa-solid fa-box"></i> {{ prod }}</span>
+                    {% endfor %}
+                </div>
+                <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+            </div>
+            <div class="form-group">
+                <label for="vehicles"><i class="fa-solid fa-truck"></i> Types of Vehicles</label>
+                <select id="vehicles" name="vehicles" multiple required>
+                    {% set vehicle_opts = ['Bike','Van','Mini Truck','Truck','Container','Refrigerated Truck','Frozen Truck'] %}
+                    {% set selected_vehicles = (profile.vehicles.split(',') if profile and profile.vehicles else []) %}
+                    {% for v in vehicle_opts %}
+                        <option value="{{ v }}" {% if v in selected_vehicles %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                </select>
+                <div class="chips">
+                    {% for v in selected_vehicles %}
+                        <span class="chip"><i class="fa-solid fa-truck"></i> {{ v }}</span>
+                    {% endfor %}
+                </div>
+                <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+            </div>
+            <button class="submit-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Profile</button>
+        </form>
+    </div>
+</body>
+</html> 

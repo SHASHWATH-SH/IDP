@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistics - CPG Digital Twin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: linear-gradient(120deg, #e0e7ff 0%, #f8fafc 100%); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
+        .top-bar { width:100%; background:linear-gradient(90deg,#667eea 0%,#764ba2 100%); box-shadow:0 2px 8px rgba(102,126,234,0.08); height:56px; display:flex; align-items:center; }
+        .top-bar-content { max-width:900px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; padding:0 18px; }
+        .back-link { color:#fff; font-weight:600; text-decoration:none; font-size:1.1rem; display:flex; align-items:center; gap:7px; transition:color 0.2s; }
+        .back-link:hover { color:#ffe082; }
+        .statistics-container { max-width: 900px; margin: 40px auto; background: linear-gradient(120deg, #f8f9fa 60%, #e0e7ff 100%); border-radius: 18px; box-shadow: 0 8px 32px rgba(102,126,234,0.13); padding: 38px 32px 32px 32px; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 6px; font-size: 2rem; }
+        .subtitle { color: #667eea; text-align: center; font-size: 1.08rem; margin-bottom: 22px; }
+        .stat-cards { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-bottom: 32px; }
+        .stat-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(102,126,234,0.10); padding: 22px 28px; min-width: 160px; text-align: center; flex: 1 1 160px; }
+        .stat-card i { font-size: 2rem; color: #667eea; margin-bottom: 8px; }
+        .stat-card .stat-label { color: #34495e; font-weight: 600; font-size: 1.08rem; }
+        .stat-card .stat-value { color: #2c3e50; font-weight: 700; font-size: 1.5rem; }
+        .charts-section { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; margin-top: 24px; }
+        .chart-container { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(102,126,234,0.10); padding: 18px 18px 8px 18px; min-width: 320px; max-width: 400px; flex: 1 1 320px; }
+        .no-profile { text-align:center; color:#e74c3c; font-size:1.1rem; margin: 32px 0 18px 0; }
+        .profile-link { color:#667eea; text-decoration:underline; }
+        @media (max-width: 1000px) { .statistics-container, .top-bar-content { max-width: 98vw; padding: 0 6px; } .statistics-container { padding: 18px 4px 18px 4px; } .charts-section { flex-direction: column; align-items: center; } }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-bar-content">
+            <a href="{{ url_for('index') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+        </div>
+    </div>
+    <div class="statistics-container">
+        <h2>Profile Statistics</h2>
+        <div class="subtitle">Your current supply chain profile details and analytics</div>
+        {% if profile %}
+        <div class="stat-cards">
+            <div class="stat-card"><i class="fa-solid fa-industry"></i><div class="stat-label">Plants</div><div class="stat-value">{{ profile.manufacturing_plant.split(',')|length }}</div></div>
+            <div class="stat-card"><i class="fa-solid fa-store"></i><div class="stat-label">Sellers</div><div class="stat-value">{{ profile.seller.split(',')|length }}</div></div>
+            <div class="stat-card"><i class="fa-solid fa-warehouse"></i><div class="stat-label">Warehouses</div><div class="stat-value">{{ profile.warehouse.split(',')|length }}</div></div>
+            <div class="stat-card"><i class="fa-solid fa-cubes"></i><div class="stat-label">Capacity</div><div class="stat-value">{{ profile.capacity }}</div></div>
+            <div class="stat-card"><i class="fa-solid fa-truck"></i><div class="stat-label">Vehicles</div><div class="stat-value">{{ profile.vehicles.split(',')|length }}</div></div>
+        </div>
+        <div class="charts-section">
+            <div class="chart-container">
+                <canvas id="plantsChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="warehousesChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="productsChart"></canvas>
+            </div>
+        </div>
+        <script>
+            // Prepare data from Jinja
+            const plants = {{ profile.manufacturing_plant|tojson }}.split(',');
+            const sellers = {{ profile.seller|tojson }}.split(',');
+            const warehouses = {{ profile.warehouse|tojson }}.split(',');
+            const products = {{ profile.cpg_product_type|tojson }}.split(',');
+            // Plants chart
+            new Chart(document.getElementById('plantsChart'), {
+                type: 'pie',
+                data: {
+                    labels: plants,
+                    datasets: [{ data: plants.map(_=>1), backgroundColor: ['#667eea','#764ba2','#f8fafc','#e0e7ff','#ffe082','#2c3e50','#e74c3c','#00b894'] }]
+                },
+                options: { plugins: { title: { display: true, text: 'Manufacturing Plants' } } }
+            });
+            // Warehouses chart
+            new Chart(document.getElementById('warehousesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: warehouses,
+                    datasets: [{ data: warehouses.map(_=>1), backgroundColor: ['#ffe082','#667eea','#764ba2','#e0e7ff','#00b894','#e74c3c','#2c3e50','#f8fafc'] }]
+                },
+                options: { plugins: { title: { display: true, text: 'Warehouses' } } }
+            });
+            // Products chart
+            new Chart(document.getElementById('productsChart'), {
+                type: 'bar',
+                data: {
+                    labels: products,
+                    datasets: [{ label: 'Product Types', data: products.map(_=>1), backgroundColor: '#667eea' }]
+                },
+                options: { plugins: { title: { display: true, text: 'CPG Product Types' } }, indexAxis: 'y' }
+            });
+        </script>
+        {% else %}
+        <div class="no-profile">No profile data found.<br><a href="{{ url_for('profile') }}" class="profile-link">Complete your profile</a></div>
+        {% endif %}
+    </div>
+</body>
+</html> 
